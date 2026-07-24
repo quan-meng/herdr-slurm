@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from herdr_slurm.__main__ import tab_created
+from herdr_slurm.__main__ import pane_created
 from herdr_slurm.core import Job, Herdr, load_state, parse_squeue, reconcile
 from herdr_slurm.output import job_active, output_paths, read_new
 
@@ -191,7 +191,7 @@ class CoreTests(unittest.TestCase):
         self.assertIn("--jobid=42", command)
         self.assertIn("exec codex", command)
 
-    def test_tab_created_uses_agent_label_as_mode(self):
+    def test_new_tab_pane_uses_agent_label_as_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config_dir, state_dir = root / "config", root / "state"
@@ -210,16 +210,70 @@ class CoreTests(unittest.TestCase):
             (state_dir / "state.json").write_text(
                 json.dumps({"version": 1, "initialized": True, "jobs": {"42": record}})
             )
-            event = {"data": {"tab": {"workspace_id": "w1", "label": "codex"}}}
+            event = {
+                "data": {
+                    "pane": {
+                        "workspace_id": "w1",
+                        "tab_id": "w1:t2",
+                        "pane_id": "w1:p2",
+                    }
+                }
+            }
             environment = {
                 "HERDR_PLUGIN_EVENT_JSON": json.dumps(event),
-                "HERDR_PANE_ID": "w1:p2",
             }
             with patch.dict(os.environ, environment), patch.object(
-                Herdr, "attach"
-            ) as attach:
-                self.assertEqual(tab_created(root, config_dir, state_dir), 0)
+                Herdr,
+                "call",
+                return_value={
+                    "result": {
+                        "tab": {"label": "codex", "pane_count": 1},
+                    }
+                },
+            ), patch.object(Herdr, "attach") as attach:
+                self.assertEqual(pane_created(root, config_dir, state_dir), 0)
         self.assertEqual(attach.call_args.args[2:], ("codex", "w1:p2"))
+
+    def test_split_pane_uses_default_mode_even_in_agent_tab(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_dir, state_dir = root / "config", root / "state"
+            config_dir.mkdir()
+            state_dir.mkdir()
+            record = {
+                "job_id": "42",
+                "name": "interactive",
+                "state": "RUNNING",
+                "workdir": "/work",
+                "partition": "gpu",
+                "managed": True,
+                "workspace_id": "w1",
+                "pane_id": "w1:p1",
+            }
+            (state_dir / "state.json").write_text(
+                json.dumps({"version": 1, "initialized": True, "jobs": {"42": record}})
+            )
+            event = {
+                "data": {
+                    "pane": {
+                        "workspace_id": "w1",
+                        "tab_id": "w1:t2",
+                        "pane_id": "w1:p3",
+                    }
+                }
+            }
+            environment = {"HERDR_PLUGIN_EVENT_JSON": json.dumps(event)}
+            with patch.dict(os.environ, environment), patch.object(
+                Herdr,
+                "call",
+                return_value={
+                    "result": {
+                        "tab": {"label": "codex", "pane_count": 2},
+                    }
+                },
+            ), patch.object(Herdr, "attach") as attach:
+                self.assertEqual(pane_created(root, config_dir, state_dir), 0)
+        self.assertEqual(attach.call_args.args[2:], ("shell", "w1:p3"))
 
 
 if __name__ == "__main__":

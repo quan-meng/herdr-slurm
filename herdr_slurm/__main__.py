@@ -78,11 +78,12 @@ def new_tab(root: Path, config_dir: Path, state_dir: Path, mode: str) -> int:
     return 0
 
 
-def tab_created(root: Path, config_dir: Path, state_dir: Path) -> int:
+def pane_created(root: Path, config_dir: Path, state_dir: Path) -> int:
     event = json.loads(os.environ.get("HERDR_PLUGIN_EVENT_JSON", "{}"))
-    tab = event.get("data", {}).get("tab", {})
-    workspace_id = tab.get("workspace_id") or os.environ.get("HERDR_WORKSPACE_ID", "")
-    pane_id = os.environ.get("HERDR_PANE_ID", "")
+    pane = event.get("data", {}).get("pane", {})
+    workspace_id = pane.get("workspace_id") or os.environ.get("HERDR_WORKSPACE_ID", "")
+    tab_id = pane.get("tab_id") or os.environ.get("HERDR_TAB_ID", "")
+    pane_id = pane.get("pane_id") or os.environ.get("HERDR_PANE_ID", "")
     found = managed_job(state_dir, workspace_id)
     if not found or not pane_id:
         return 0
@@ -90,9 +91,15 @@ def tab_created(root: Path, config_dir: Path, state_dir: Path) -> int:
     if pane_id == record.get("pane_id"):
         return 0
     config = load_config(config_dir)
-    label = str(tab.get("label", "")).lower()
-    mode = label if label in config["agent_commands"] else config["new_tab_mode"]
-    Herdr(root, config).attach(job, record, mode, pane_id)
+    herdr = Herdr(root, config)
+    mode = config["new_tab_mode"]
+    if tab_id:
+        response = herdr.call("tab", "get", tab_id)
+        tab = response.get("result", {}).get("tab", {})
+        label = str(tab.get("label", "")).lower()
+        if tab.get("pane_count") == 1 and label in config["agent_commands"]:
+            mode = label
+    herdr.attach(job, record, mode, pane_id)
     return 0
 
 
@@ -153,8 +160,8 @@ def main() -> int:
             return 0
     if command == "new-tab" and len(sys.argv) == 3:
         return new_tab(root, config_dir, state_dir, sys.argv[2])
-    if command == "tab-created":
-        return tab_created(root, config_dir, state_dir)
+    if command == "pane-created":
+        return pane_created(root, config_dir, state_dir)
     print(f"unknown command: {command}", file=sys.stderr)
     return 2
 

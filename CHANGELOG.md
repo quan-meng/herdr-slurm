@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Automatically attach split panes in managed job Spaces to the job's compute node with `srun`.
+- Preserve agent-specific behavior for new Codex and Claude tabs without double-launching them.
+
 ## 0.1.2
 
 - Support the Python 3.8 runtime provided by older cluster login nodes.
