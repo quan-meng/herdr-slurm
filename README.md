@@ -1,15 +1,13 @@
 # herdr-slurm
 
 Create a [Herdr](https://herdr.dev/) Space for each new Slurm allocation, show its batch
-output, and attach additional shell or agent panes to the allocated compute node.
+output, and provide explicit shell or agent actions for the allocated compute node.
 
 ```text
 squeue detects <job-name> [<job-id>]
              │
              └── Herdr Space: <job-name> [<job-id>]
-                              ├── output  (live sbatch stdout/stderr)
-                              └── shell   (additional tab)
-                                  └── srun --jobid=<job-id> --pty --overlap zsh -l
+                              └── output  (live sbatch stdout/stderr)
 ```
 
 ## Requirements
@@ -56,11 +54,18 @@ job after that creates a Space named `<job-name> [<job-id>]`. The values come fr
 record and are not hard-coded. The initial `output` tab follows the stdout and stderr paths that
 Slurm reports for the batch job, including output produced by the submitted script.
 
-Every additional ordinary pane, whether created as a tab or a split, starts a helper that waits
-while the allocation is pending and then runs:
+Ordinary tabs and split panes remain login-node shells. Attach one manually when you want a
+compute-node shell:
 
 ```bash
 srun --jobid=<job-id> --pty --overlap zsh -l
+```
+
+Choose a static Herdr agent hint when that pane will run an agent behind `srun`:
+
+```bash
+HERDR_AGENT=codex srun --jobid=<job-id> --pty --overlap zsh -l
+HERDR_AGENT=claude srun --jobid=<job-id> --pty --overlap zsh -l
 ```
 
 The allocation remains owned by the original `sbatch` job. Exiting the attached shell only ends
@@ -76,13 +81,13 @@ herdr plugin action invoke \
 Generated Spaces remain open after allocations end. The plugin reports `slurm_job` and
 `slurm_state` workspace metadata and sends Herdr notifications for running and ended jobs.
 
-### Additional panes, tabs, and coding agents
+### Optional compute-node tab actions
 
-Creating an ordinary tab or split pane inside a managed job Space automatically attaches that
-pane with the same `srun --jobid=... --pty --overlap zsh -l` command. Panes elsewhere are
-untouched.
+Creating an ordinary tab or split pane never runs `srun` automatically. This lets you decide
+whether the pane stays on the login node, attaches without an agent hint, or attaches with
+`HERDR_AGENT=codex` or `HERDR_AGENT=claude`.
 
-The plugin also exposes three actions in a managed job Space:
+The plugin exposes three explicit opt-in actions in a managed job Space:
 
 ```bash
 herdr plugin action invoke io.github.quan-meng.herdr-slurm.new-shell-tab
@@ -119,7 +124,6 @@ The watcher creates `config.json` there on first start. Defaults:
   "output_tab_label": "output",
   "shell": ["zsh", "-l"],
   "srun_arguments": ["--pty", "--overlap"],
-  "new_tab_mode": "shell",
   "agent_commands": {
     "codex": ["zsh", "-lic", "exec codex"],
     "claude": ["zsh", "-lic", "exec claude"]
@@ -167,8 +171,8 @@ were active before its first poll unless you invoke `adopt-current`.
   watcher to acquire the plugin lock owns reconciliation.
 - The initial `output` tab follows files reported by Slurm. If a job redirects all output inside
   its script or uses `/dev/null`, Slurm may not expose content for the plugin to display.
-- Additional shell tabs are not labeled as coding agents; use an agent-specific action when you
-  want Herdr lifecycle monitoring.
+- Manual `srun` shells are not labeled as coding agents unless `HERDR_AGENT` is set on the
+  login-node `srun` process; the agent-specific actions set it automatically.
 
 ## Publish
 

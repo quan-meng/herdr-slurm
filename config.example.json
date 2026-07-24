@@ -7,7 +7,6 @@
   "output_tab_label": "output",
   "shell": ["zsh", "-l"],
   "srun_arguments": ["--pty", "--overlap"],
-  "new_tab_mode": "shell",
   "agent_commands": {
     "codex": ["zsh", "-lic", "exec codex"],
     "claude": ["zsh", "-lic", "exec claude"]

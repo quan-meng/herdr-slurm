@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Leave ordinary new tabs and split panes on the login node so users can choose their own `srun` and optional `HERDR_AGENT` hint.
+- Keep shell, Codex, and Claude plugin actions as explicit opt-in compute-node attachments.
+
 ## 0.1.3
 
 - Automatically attach split panes in managed job Spaces to the job's compute node with `srun`.

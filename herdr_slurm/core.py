@@ -24,7 +24,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "output_tab_label": "output",
     "shell": ["zsh", "-l"],
     "srun_arguments": ["--pty", "--overlap"],
-    "new_tab_mode": "shell",
     "agent_commands": {
         "codex": ["zsh", "-lic", "exec codex"],
         "claude": ["zsh", "-lic", "exec claude"],
@@ -74,11 +73,6 @@ def load_config(config_dir: Path) -> dict[str, Any]:
         for name, argv in config["agent_commands"].items()
     ):
         raise ValueError("agent_commands must map agent names to non-empty argv lists")
-    if (
-        config["new_tab_mode"] != "shell"
-        and config["new_tab_mode"] not in config["agent_commands"]
-    ):
-        raise ValueError("new_tab_mode must be shell or a configured agent name")
     re.compile(config["job_name_pattern"])
     config["poll_interval_seconds"] = max(1, int(config["poll_interval_seconds"]))
     return config
