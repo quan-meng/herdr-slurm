@@ -9,12 +9,14 @@ from unittest.mock import patch
 
 from herdr_slurm.__main__ import tab_created
 from herdr_slurm.core import Job, Herdr, load_state, parse_squeue, reconcile
+from herdr_slurm.output import job_active, output_paths, read_new
 
 
 class FakeHerdr:
     def __init__(self):
         self.created = []
         self.attached = []
+        self.followed = []
         self.reported = []
         self.notifications = []
 
@@ -24,6 +26,9 @@ class FakeHerdr:
 
     def attach(self, job, record):
         self.attached.append(job.job_id)
+
+    def follow_output(self, job, record):
+        self.followed.append(job.job_id)
 
     def report(self, record, state):
         self.reported.append((record["job_id"], state))
@@ -63,13 +68,13 @@ class CoreTests(unittest.TestCase):
         reconcile([job()], state, herdr, CONFIG)
         self.assertEqual(herdr.created, [])
 
-    def test_new_job_creates_workspace_and_attachment_once(self):
+    def test_new_job_creates_workspace_and_output_follower_once(self):
         state = {"version": 1, "initialized": True, "jobs": {}}
         herdr = FakeHerdr()
         reconcile([job()], state, herdr, CONFIG)
         reconcile([job(state="RUNNING")], state, herdr, CONFIG)
         self.assertEqual(herdr.created, ["42"])
-        self.assertEqual(herdr.attached, ["42"])
+        self.assertEqual(herdr.followed, ["42"])
         self.assertIn(("42", "RUNNING"), herdr.reported)
 
     def test_adopt_promotes_baselined_job(self):
@@ -113,6 +118,59 @@ class CoreTests(unittest.TestCase):
             path.write_text('{"version": 2, "jobs": {}}')
             with self.assertRaises(ValueError):
                 load_state(path)
+
+    def test_load_state_preserves_legacy_initial_shell(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "state.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "initialized": True,
+                        "jobs": {"42": {"attached": True}},
+                    }
+                )
+            )
+            record = load_state(path)["jobs"]["42"]
+        self.assertTrue(record["output_started"])
+        self.assertEqual(record["output_mode"], "legacy_shell")
+
+    def test_scontrol_output_paths_include_distinct_stdout_and_stderr(self):
+        output = (
+            "JobId=42 WorkDir=/work StdErr=logs/error.log StdIn=/dev/null "
+            "StdOut=/work/output.log TresPerNode=gres/gpu:1"
+        )
+        self.assertEqual(
+            output_paths(output),
+            [Path("/work/output.log"), Path("/work/logs/error.log")],
+        )
+
+    def test_output_paths_deduplicate_merged_streams(self):
+        output = "JobId=42 WorkDir=/work StdErr=/work/job.log StdOut=/work/job.log"
+        self.assertEqual(output_paths(output), [Path("/work/job.log")])
+
+    def test_output_reader_follows_appends(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "job.log"
+            path.write_text("first\n")
+            handles = {}
+            with patch("sys.stdout") as stdout:
+                self.assertTrue(read_new(path, handles))
+                path.write_text("first\nsecond\n")
+                self.assertTrue(read_new(path, handles))
+            for _, handle in handles.values():
+                handle.close()
+        self.assertEqual(
+            [call.args[0] for call in stdout.write.call_args_list],
+            ["first\n", "second\n"],
+        )
+
+    @patch("herdr_slurm.output.subprocess.run")
+    def test_invalid_job_is_not_active(self, run):
+        run.return_value.returncode = 1
+        run.return_value.stderr = "slurm_load_jobs error: Invalid job id specified"
+        run.return_value.stdout = ""
+        self.assertFalse(job_active("999999999"))
 
     def test_codex_attachment_sets_host_visible_agent_hint(self):
         config = {

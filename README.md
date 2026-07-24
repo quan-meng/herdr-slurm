@@ -1,14 +1,15 @@
 # herdr-slurm
 
-Create a [Herdr](https://herdr.dev/) Space for each new Slurm allocation and attach its
-first tab to the allocated compute node.
+Create a [Herdr](https://herdr.dev/) Space for each new Slurm allocation, show its batch
+output, and attach additional shell or agent tabs to the allocated compute node.
 
 ```text
-squeue detects training [2815292]
+squeue detects <job-name> [<job-id>]
              │
-             └── Herdr Space: training [2815292]
-                              └── shell
-                                  └── srun --jobid=2815292 --pty --overlap zsh -l
+             └── Herdr Space: <job-name> [<job-id>]
+                              ├── output  (live sbatch stdout/stderr)
+                              └── shell   (additional tab)
+                                  └── srun --jobid=<job-id> --pty --overlap zsh -l
 ```
 
 ## Requirements
@@ -51,8 +52,12 @@ and exits.
 ## Behavior
 
 On its first poll, the watcher records existing jobs without changing Herdr. Every new matching
-job after that creates a Space named `<job-name> [<job-id>]`. The initial `shell` tab starts a
-helper that waits while the allocation is pending and then runs:
+job after that creates a Space named `<job-name> [<job-id>]`. The values come from Slurm's job
+record and are not hard-coded. The initial `output` tab follows the stdout and stderr paths that
+Slurm reports for the batch job, including output produced by the submitted script.
+
+Every additional ordinary tab starts a helper that waits while the allocation is pending and
+then runs:
 
 ```bash
 srun --jobid=<job-id> --pty --overlap zsh -l
@@ -110,7 +115,7 @@ The watcher creates `config.json` there on first start. Defaults:
   "partitions": [],
   "job_name_pattern": ".*",
   "workspace_label": "{job_name} [{job_id}]",
-  "tab_label": "shell",
+  "output_tab_label": "output",
   "shell": ["zsh", "-l"],
   "srun_arguments": ["--pty", "--overlap"],
   "new_tab_mode": "shell",
@@ -159,8 +164,10 @@ were active before its first poll unless you invoke `adopt-current`.
   `squeue` exposes a concrete job ID.
 - One watcher is supported per Unix account. With multiple named Herdr sessions, the first
   watcher to acquire the plugin lock owns reconciliation.
-- The default tab is a general shell and is not labeled as a coding agent; use an agent-specific
-  action when you want Herdr lifecycle monitoring.
+- The initial `output` tab follows files reported by Slurm. If a job redirects all output inside
+  its script or uses `/dev/null`, Slurm may not expose content for the plugin to display.
+- Additional shell tabs are not labeled as coding agents; use an agent-specific action when you
+  want Herdr lifecycle monitoring.
 
 ## Publish
 

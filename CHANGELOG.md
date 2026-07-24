@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Show the batch task's live Slurm stdout and stderr in each job Space's initial `output` tab.
+- Keep automatic `srun` attachment for every additional shell, Codex, or Claude tab.
+
 ## 0.1.0
 
 - Detect new pending and running Slurm allocations.
