@@ -96,16 +96,17 @@ def tab_created(root: Path, config_dir: Path, state_dir: Path) -> int:
     return 0
 
 
-def recover_attachments(state: dict, herdr: Herdr) -> bool:
+def recover_outputs(state: dict, herdr: Herdr) -> bool:
     changed = False
     for record in state["jobs"].values():
         if (
             record.get("managed")
-            and record.get("attached")
+            and record.get("output_started")
+            and record.get("output_mode") != "legacy_shell"
             and record.get("state") != "ENDED"
         ):
-            if not herdr.attachment_alive(record):
-                record["attached"] = False
+            if not herdr.output_alive(record):
+                record["output_started"] = False
                 changed = True
     return changed
 
@@ -122,7 +123,7 @@ def watch(root: Path, config_dir: Path, state_dir: Path) -> int:
     state_path = state_dir / "state.json"
     state = load_state(state_path)
     herdr = Herdr(root, config)
-    if recover_attachments(state, herdr):
+    if recover_outputs(state, herdr):
         save_state(state_path, state)
     print("Watching Slurm allocations. Press Ctrl+C to stop.", flush=True)
     while True:

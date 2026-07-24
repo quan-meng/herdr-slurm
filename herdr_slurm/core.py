@@ -21,7 +21,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "partitions": [],
     "job_name_pattern": ".*",
     "workspace_label": "{job_name} [{job_id}]",
-    "tab_label": "shell",
+    "output_tab_label": "output",
     "shell": ["zsh", "-l"],
     "srun_arguments": ["--pty", "--overlap"],
     "new_tab_mode": "shell",
@@ -89,6 +89,11 @@ def load_state(path: Path) -> dict[str, Any]:
     state = json.loads(path.read_text())
     if state.get("version") != 1 or not isinstance(state.get("jobs"), dict):
         raise ValueError(f"unsupported state file: {path}")
+    for record in state["jobs"].values():
+        if "output_started" not in record:
+            record["output_started"] = bool(record.get("attached"))
+            if record.get("attached"):
+                record["output_mode"] = "legacy_shell"
     return state
 
 
@@ -173,8 +178,20 @@ class Herdr:
             "tab_id": result["tab"]["tab_id"],
             "pane_id": result["root_pane"]["pane_id"],
         }
-        self.call("tab", "rename", record["tab_id"], self.config["tab_label"])
+        self.call("tab", "rename", record["tab_id"], self.config["output_tab_label"])
         return record
+
+    def follow_output(self, job: Job, record: dict[str, Any]) -> None:
+        helper = self.root / "herdr_slurm" / "output.py"
+        command = "exec " + shlex.join(
+            [
+                sys.executable,
+                str(helper),
+                job.job_id,
+                str(self.config["poll_interval_seconds"]),
+            ]
+        )
+        self.call("pane", "run", record["pane_id"], command)
 
     def attach(
         self,
@@ -233,19 +250,17 @@ class Herdr:
         if self.config["notify"]:
             self.call("notification", "show", title, "--body", body, "--sound", sound)
 
-    def attachment_alive(self, record: dict[str, Any]) -> bool:
+    def output_alive(self, record: dict[str, Any]) -> bool:
         try:
             info = self.call("pane", "process-info", record["pane_id"])
         except RuntimeError:
             return False
         haystack = "\n".join(strings(info))
-        return record["job_id"] in haystack and (
-            "srun" in haystack or "attach.py" in haystack
-        )
+        return record["job_id"] in haystack and "output.py" in haystack
 
 
 def new_record(job: Job, managed: bool) -> dict[str, Any]:
-    return asdict(job) | {"managed": managed, "attached": False}
+    return asdict(job) | {"managed": managed, "output_started": False}
 
 
 def safely(action, message: str) -> bool:
@@ -292,7 +307,7 @@ def reconcile(
                 f"create {job.job_id}",
             ):
                 continue
-            record.update(created | {"managed": True, "attached": False})
+            record.update(created | {"managed": True, "output_started": False})
             changed = True
         previous = record["state"]
         record.update(asdict(job))
@@ -301,10 +316,11 @@ def reconcile(
         if not record["managed"]:
             continue
         record["job_id"] = job.job_id
-        if not record["attached"] and safely(
-            lambda: herdr.attach(job, record), f"attach {job.job_id}"
+        if not record["output_started"] and safely(
+            lambda: herdr.follow_output(job, record), f"follow output {job.job_id}"
         ):
-            record["attached"] = True
+            record["output_started"] = True
+            record["output_mode"] = "output"
             changed = True
         if previous != job.state or not record.get("reported"):
             if safely(lambda: herdr.report(record, job.state), f"report {job.job_id}"):

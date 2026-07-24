@@ -4,7 +4,7 @@
   "partitions": [],
   "job_name_pattern": ".*",
   "workspace_label": "{job_name} [{job_id}]",
-  "tab_label": "shell",
+  "output_tab_label": "output",
   "shell": ["zsh", "-l"],
   "srun_arguments": ["--pty", "--overlap"],
   "new_tab_mode": "shell",
