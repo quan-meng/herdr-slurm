@@ -1,7 +1,7 @@
 # herdr-slurm
 
 Create a [Herdr](https://herdr.dev/) Space for each new Slurm allocation, show its batch
-output, and attach additional shell or agent tabs to the allocated compute node.
+output, and attach additional shell or agent panes to the allocated compute node.
 
 ```text
 squeue detects <job-name> [<job-id>]
@@ -56,8 +56,8 @@ job after that creates a Space named `<job-name> [<job-id>]`. The values come fr
 record and are not hard-coded. The initial `output` tab follows the stdout and stderr paths that
 Slurm reports for the batch job, including output produced by the submitted script.
 
-Every additional ordinary tab starts a helper that waits while the allocation is pending and
-then runs:
+Every additional ordinary pane, whether created as a tab or a split, starts a helper that waits
+while the allocation is pending and then runs:
 
 ```bash
 srun --jobid=<job-id> --pty --overlap zsh -l
@@ -76,10 +76,11 @@ herdr plugin action invoke \
 Generated Spaces remain open after allocations end. The plugin reports `slurm_job` and
 `slurm_state` workspace metadata and sends Herdr notifications for running and ended jobs.
 
-### Additional tabs and coding agents
+### Additional panes, tabs, and coding agents
 
-Creating an ordinary tab inside a managed job Space automatically attaches that tab with the
-same `srun --jobid=... --pty --overlap zsh -l` command. Tabs elsewhere are untouched.
+Creating an ordinary tab or split pane inside a managed job Space automatically attaches that
+pane with the same `srun --jobid=... --pty --overlap zsh -l` command. Panes elsewhere are
+untouched.
 
 The plugin also exposes three actions in a managed job Space:
 

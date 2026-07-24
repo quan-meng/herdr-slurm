@@ -1,6 +1,6 @@
 id = "io.github.quan-meng.herdr-slurm"
 name = "Slurm Workspaces"
-version = "0.1.2"
+version = "0.1.3"
 min_herdr_version = "0.7.0"
 description = "Create Herdr workspaces for new Slurm allocations"
 platforms = ["linux"]
@@ -39,8 +39,8 @@ contexts = ["workspace"]
 command = ["python3", "-m", "herdr_slurm", "new-tab", "claude"]
 
 [[events]]
-on = "tab.created"
-command = ["python3", "-m", "herdr_slurm", "tab-created"]
+on = "pane.created"
+command = ["python3", "-m", "herdr_slurm", "pane-created"]
 
 [[panes]]
 id = "watcher"
