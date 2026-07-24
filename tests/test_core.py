@@ -215,10 +215,9 @@ class CoreTests(unittest.TestCase):
                 "HERDR_PLUGIN_EVENT_JSON": json.dumps(event),
                 "HERDR_PANE_ID": "w1:p2",
             }
-            with (
-                patch.dict(os.environ, environment),
-                patch.object(Herdr, "attach") as attach,
-            ):
+            with patch.dict(os.environ, environment), patch.object(
+                Herdr, "attach"
+            ) as attach:
                 self.assertEqual(tab_created(root, config_dir, state_dir), 0)
         self.assertEqual(attach.call_args.args[2:], ("codex", "w1:p2"))
 
