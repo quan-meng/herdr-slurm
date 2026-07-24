@@ -16,7 +16,7 @@ squeue detects <job-name> [<job-id>]
 
 - Linux login node with `squeue` and `srun`
 - Herdr 0.7.0 or newer
-- Python 3.10 or newer
+- Python 3.8 or newer
 
 No Python packages are required.
 

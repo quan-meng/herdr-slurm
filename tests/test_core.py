@@ -88,7 +88,9 @@ class CoreTests(unittest.TestCase):
     def test_partition_filter_is_respected(self):
         state = {"version": 1, "initialized": True, "jobs": {}}
         herdr = FakeHerdr()
-        reconcile([job()], state, herdr, CONFIG | {"partitions": ["cpu"]})
+        config = CONFIG.copy()
+        config["partitions"] = ["cpu"]
+        reconcile([job()], state, herdr, config)
         self.assertEqual(herdr.created, [])
 
     def test_failed_workspace_creation_is_retried(self):

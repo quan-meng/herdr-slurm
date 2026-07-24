@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Support the Python 3.8 runtime provided by older cluster login nodes.
+
 ## 0.1.1
 
 - Show the batch task's live Slurm stdout and stderr in each job Space's initial `output` tab.
