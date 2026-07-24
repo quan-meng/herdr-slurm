@@ -1,6 +1,6 @@
 id = "io.github.quan-meng.herdr-slurm"
 name = "Slurm Workspaces"
-version = "0.1.1"
+version = "0.1.2"
 min_herdr_version = "0.7.0"
 description = "Create Herdr workspaces for new Slurm allocations"
 platforms = ["linux"]

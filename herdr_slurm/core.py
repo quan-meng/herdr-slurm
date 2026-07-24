@@ -59,7 +59,8 @@ def load_config(config_dir: Path) -> dict[str, Any]:
     if not path.exists():
         path.write_text(json.dumps(DEFAULT_CONFIG, indent=2) + "\n")
     raw = json.loads(path.read_text())
-    config = DEFAULT_CONFIG | raw
+    config = DEFAULT_CONFIG.copy()
+    config.update(raw)
     if not isinstance(config["partitions"], list) or not all(
         isinstance(value, str) for value in config["partitions"]
     ):
@@ -260,7 +261,9 @@ class Herdr:
 
 
 def new_record(job: Job, managed: bool) -> dict[str, Any]:
-    return asdict(job) | {"managed": managed, "output_started": False}
+    record = asdict(job)
+    record.update({"managed": managed, "output_started": False})
+    return record
 
 
 def safely(action, message: str) -> bool:
@@ -307,7 +310,8 @@ def reconcile(
                 f"create {job.job_id}",
             ):
                 continue
-            record.update(created | {"managed": True, "output_started": False})
+            record.update(created)
+            record.update({"managed": True, "output_started": False})
             changed = True
         previous = record["state"]
         record.update(asdict(job))
