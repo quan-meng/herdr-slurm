@@ -1,0 +1,49 @@
+id = "io.github.quan-meng.herdr-slurm"
+name = "Slurm Workspaces"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Create Herdr workspaces for new Slurm allocations"
+platforms = ["linux"]
+
+[[startup]]
+command = ["python3", "-m", "herdr_slurm", "start"]
+
+[[actions]]
+id = "start-watcher"
+title = "Start Slurm watcher"
+contexts = ["workspace"]
+command = ["python3", "-m", "herdr_slurm", "start"]
+
+[[actions]]
+id = "adopt-current"
+title = "Adopt current Slurm jobs"
+contexts = ["workspace"]
+command = ["python3", "-m", "herdr_slurm", "adopt"]
+
+[[actions]]
+id = "new-shell-tab"
+title = "New Slurm shell tab"
+contexts = ["workspace"]
+command = ["python3", "-m", "herdr_slurm", "new-tab", "shell"]
+
+[[actions]]
+id = "new-codex-tab"
+title = "New Slurm Codex tab"
+contexts = ["workspace"]
+command = ["python3", "-m", "herdr_slurm", "new-tab", "codex"]
+
+[[actions]]
+id = "new-claude-tab"
+title = "New Slurm Claude tab"
+contexts = ["workspace"]
+command = ["python3", "-m", "herdr_slurm", "new-tab", "claude"]
+
+[[events]]
+on = "tab.created"
+command = ["python3", "-m", "herdr_slurm", "tab-created"]
+
+[[panes]]
+id = "watcher"
+title = "Slurm watcher"
+placement = "tab"
+command = ["python3", "-m", "herdr_slurm", "watch"]

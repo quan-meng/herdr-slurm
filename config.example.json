@@ -1,0 +1,17 @@
+{
+  "poll_interval_seconds": 5,
+  "adopt_existing_jobs": false,
+  "partitions": [],
+  "job_name_pattern": ".*",
+  "workspace_label": "{job_name} [{job_id}]",
+  "tab_label": "shell",
+  "shell": ["zsh", "-l"],
+  "srun_arguments": ["--pty", "--overlap"],
+  "new_tab_mode": "shell",
+  "agent_commands": {
+    "codex": ["zsh", "-lic", "exec codex"],
+    "claude": ["zsh", "-lic", "exec claude"]
+  },
+  "focus_new_workspace": false,
+  "notify": true
+}
